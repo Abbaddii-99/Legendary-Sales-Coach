@@ -1,30 +1,65 @@
 import { Platform } from "react-native";
 
-const tintColorLight = "#007AFF";
-const tintColorDark = "#0A84FF";
+// Girard's Legacy Color Palette
+const navyPrimary = "#1A2B4A";
+const goldAccent = "#D4AF37";
+const offWhiteBg = "#F8F9FA";
+const surfaceWhite = "#FFFFFF";
+const charcoalText = "#2C3E50";
+const graySecondary = "#6C757D";
+const emeraldSuccess = "#27AE60";
+const amberWarning = "#F39C12";
+const crimsonError = "#C0392B";
+
+// Semantic Colors
+const customerMessageBg = "#E3F2FD";
+const feedbackCardBg = "#FFF9E6";
+const feedbackCardBorder = "#D4AF37";
 
 export const Colors = {
   light: {
-    text: "#11181C",
+    text: charcoalText,
+    textSecondary: graySecondary,
     buttonText: "#FFFFFF",
-    tabIconDefault: "#687076",
-    tabIconSelected: tintColorLight,
-    link: "#007AFF",
-    backgroundRoot: "#FFFFFF", // Elevation 0
-    backgroundDefault: "#F2F2F2", // Elevation 1
-    backgroundSecondary: "#E6E6E6", // Elevation 2
-    backgroundTertiary: "#D9D9D9", // Elevation 3
+    tabIconDefault: graySecondary,
+    tabIconSelected: goldAccent,
+    link: goldAccent,
+    primary: navyPrimary,
+    accent: goldAccent,
+    success: emeraldSuccess,
+    warning: amberWarning,
+    error: crimsonError,
+    backgroundRoot: offWhiteBg,
+    backgroundDefault: surfaceWhite,
+    backgroundSecondary: "#F0F1F3",
+    backgroundTertiary: "#E6E7E9",
+    backgroundNavy: navyPrimary,
+    customerMessage: customerMessageBg,
+    feedbackBg: feedbackCardBg,
+    feedbackBorder: feedbackCardBorder,
+    cardBorder: "#E0E0E0",
   },
   dark: {
     text: "#ECEDEE",
+    textSecondary: "#9BA1A6",
     buttonText: "#FFFFFF",
     tabIconDefault: "#9BA1A6",
-    tabIconSelected: tintColorDark,
-    link: "#0A84FF",
-    backgroundRoot: "#1F2123", // Elevation 0
-    backgroundDefault: "#2A2C2E", // Elevation 1
-    backgroundSecondary: "#353739", // Elevation 2
-    backgroundTertiary: "#404244", // Elevation 3
+    tabIconSelected: goldAccent,
+    link: goldAccent,
+    primary: "#0F1A2E",
+    accent: goldAccent,
+    success: emeraldSuccess,
+    warning: amberWarning,
+    error: crimsonError,
+    backgroundRoot: "#0F1A2E",
+    backgroundDefault: "#1A2B4A",
+    backgroundSecondary: "#243552",
+    backgroundTertiary: "#2E3F5C",
+    backgroundNavy: "#0F1A2E",
+    customerMessage: "#1E3A5F",
+    feedbackBg: "#2A2A1F",
+    feedbackBorder: goldAccent,
+    cardBorder: "#3A4A5A",
   },
 };
 
@@ -54,25 +89,35 @@ export const BorderRadius = {
 };
 
 export const Typography = {
-  h1: {
+  display: {
     fontSize: 32,
     lineHeight: 40,
     fontWeight: "700" as const,
+    fontFamily: "Montserrat_700Bold",
   },
-  h2: {
-    fontSize: 28,
-    lineHeight: 36,
-    fontWeight: "700" as const,
-  },
-  h3: {
+  h1: {
     fontSize: 24,
     lineHeight: 32,
-    fontWeight: "600" as const,
+    fontWeight: "700" as const,
+    fontFamily: "Montserrat_700Bold",
   },
-  h4: {
+  h2: {
     fontSize: 20,
     lineHeight: 28,
     fontWeight: "600" as const,
+    fontFamily: "Montserrat_600SemiBold",
+  },
+  h3: {
+    fontSize: 18,
+    lineHeight: 26,
+    fontWeight: "600" as const,
+    fontFamily: "Montserrat_600SemiBold",
+  },
+  h4: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: "600" as const,
+    fontFamily: "Montserrat_600SemiBold",
   },
   body: {
     fontSize: 16,
@@ -84,6 +129,17 @@ export const Typography = {
     lineHeight: 20,
     fontWeight: "400" as const,
   },
+  caption: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "400" as const,
+  },
+  button: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: "600" as const,
+    fontFamily: "Montserrat_600SemiBold",
+  },
   link: {
     fontSize: 16,
     lineHeight: 24,
@@ -93,13 +149,9 @@ export const Typography = {
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: "system-ui",
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: "ui-serif",
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: "ui-rounded",
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: "ui-monospace",
   },
   default: {

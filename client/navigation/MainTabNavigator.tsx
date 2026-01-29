@@ -3,12 +3,17 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
-import HomeStackNavigator from "@/navigation/HomeStackNavigator";
+import ArenaStackNavigator from "@/navigation/ArenaStackNavigator";
+import TrainingStackNavigator from "@/navigation/TrainingStackNavigator";
+import CRMStackNavigator from "@/navigation/CRMStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
+import { Colors } from "@/constants/theme";
 
 export type MainTabParamList = {
-  HomeTab: undefined;
+  ArenaTab: undefined;
+  TrainingTab: undefined;
+  CRMTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -19,9 +24,9 @@ export default function MainTabNavigator() {
 
   return (
     <Tab.Navigator
-      initialRouteName="HomeTab"
+      initialRouteName="ArenaTab"
       screenOptions={{
-        tabBarActiveTintColor: theme.tabIconSelected,
+        tabBarActiveTintColor: Colors.light.accent,
         tabBarInactiveTintColor: theme.tabIconDefault,
         tabBarStyle: {
           position: "absolute",
@@ -44,12 +49,32 @@ export default function MainTabNavigator() {
       }}
     >
       <Tab.Screen
-        name="HomeTab"
-        component={HomeStackNavigator}
+        name="ArenaTab"
+        component={ArenaStackNavigator}
         options={{
-          title: "Home",
+          title: "Arena",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="home" size={size} color={color} />
+            <Feather name="mic" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="TrainingTab"
+        component={TrainingStackNavigator}
+        options={{
+          title: "Training",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="book-open" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="CRMTab"
+        component={CRMStackNavigator}
+        options={{
+          title: "CRM",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="users" size={size} color={color} />
           ),
         }}
       />
@@ -59,7 +84,7 @@ export default function MainTabNavigator() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="user" size={size} color={color} />
+            <Feather name="settings" size={size} color={color} />
           ),
         }}
       />
