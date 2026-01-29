@@ -1,15 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   StyleSheet,
   ScrollView,
   Image,
   Pressable,
+  I18nManager,
 } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
@@ -21,6 +22,7 @@ import Animated, {
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -37,19 +39,12 @@ const DEFAULT_STATS: UserStats = {
   totalSessions: 0,
   trustPoints: 0,
   connections: 0,
-  level: "Newcomer",
+  level: "newcomer",
 };
-
-const MOTIVATIONAL_QUOTES = [
-  "Every customer knows 250 other people. Never lose one!",
-  "People don't buy products. They buy you!",
-  "The only way to make a sale is to believe you can.",
-  "Follow up until they buy or die!",
-  "Your attitude determines your altitude in sales.",
-];
 
 export default function ArenaScreen() {
   const { theme } = useTheme();
+  const { t, isRTL, language } = useLanguage();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
@@ -58,12 +53,21 @@ export default function ArenaScreen() {
   const [dailyQuote, setDailyQuote] = useState("");
   const [userName, setUserName] = useState("Champion");
 
-  useEffect(() => {
-    loadData();
-    const randomQuote =
-      MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
-    setDailyQuote(randomQuote);
-  }, []);
+  const quotes = [
+    t("quote1"),
+    t("quote2"),
+    t("quote3"),
+    t("quote4"),
+    t("quote5"),
+  ];
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+      const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+      setDailyQuote(randomQuote);
+    }, [language])
+  );
 
   const loadData = async () => {
     try {
@@ -84,7 +88,7 @@ export default function ArenaScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate("TrainingSession", {
       scenarioId: "quick-start",
-      scenarioTitle: "Quick Practice",
+      scenarioTitle: t("quickPractice"),
       customerType: "random",
     });
   };
@@ -94,6 +98,15 @@ export default function ArenaScreen() {
     if (stats.trustPoints >= 200) return Colors.light.success;
     return Colors.light.warning;
   };
+
+  const getLevelName = () => {
+    if (stats.trustPoints >= 500) return t("masterCloser");
+    if (stats.trustPoints >= 200) return t("certifiedDealer");
+    if (stats.trustPoints >= 50) return t("apprentice");
+    return t("newcomer");
+  };
+
+  const flexDirection = isRTL ? "row-reverse" : "row";
 
   return (
     <ScrollView
@@ -111,23 +124,31 @@ export default function ArenaScreen() {
         entering={FadeInDown.delay(100).duration(500)}
         style={[styles.welcomeCard, { backgroundColor: Colors.light.primary }]}
       >
-        <View style={styles.welcomeContent}>
-          <ThemedText style={styles.welcomeGreeting}>
-            Welcome back,
-          </ThemedText>
-          <ThemedText style={styles.welcomeName}>{userName}</ThemedText>
-          <ThemedText style={styles.welcomeQuote}>"{dailyQuote}"</ThemedText>
-          <ThemedText style={styles.welcomeAttribution}>- Joe Girard</ThemedText>
+        <View style={[styles.welcomeContent, { flexDirection }]}>
+          <View style={{ flex: 1 }}>
+            <ThemedText style={[styles.welcomeGreeting, isRTL && styles.rtlText]}>
+              {t("welcomeBack")}
+            </ThemedText>
+            <ThemedText style={[styles.welcomeName, isRTL && styles.rtlText]}>
+              {userName}
+            </ThemedText>
+            <ThemedText style={[styles.welcomeQuote, isRTL && styles.rtlText]}>
+              "{dailyQuote}"
+            </ThemedText>
+            <ThemedText style={[styles.welcomeAttribution, isRTL && styles.rtlText]}>
+              - {isRTL ? "جو جيرارد" : "Joe Girard"}
+            </ThemedText>
+          </View>
+          <Image
+            source={require("../../assets/images/joe-avatar.png")}
+            style={styles.joeAvatar}
+            resizeMode="cover"
+          />
         </View>
-        <Image
-          source={require("../../assets/images/joe-avatar.png")}
-          style={styles.joeAvatar}
-          resizeMode="cover"
-        />
       </Animated.View>
 
       {/* Main Cards Row */}
-      <View style={styles.cardsRow}>
+      <View style={[styles.cardsRow, { flexDirection }]}>
         {/* The Arena Card */}
         <Animated.View
           entering={FadeInDown.delay(200).duration(500)}
@@ -141,7 +162,9 @@ export default function ArenaScreen() {
               pressed && styles.cardPressed,
             ]}
           >
-            <ThemedText style={styles.cardTitle}>THE ARENA</ThemedText>
+            <ThemedText style={[styles.cardTitle, isRTL && styles.rtlText]}>
+              {t("theArena")}
+            </ThemedText>
             <View style={styles.arenaIconContainer}>
               <Feather name="mic" size={32} color={Colors.light.accent} />
             </View>
@@ -151,10 +174,12 @@ export default function ArenaScreen() {
               resizeMode="cover"
             />
             <View style={styles.speechBubble}>
-              <ThemedText style={styles.speechText}>What are you selling today?</ThemedText>
+              <ThemedText style={[styles.speechText, isRTL && styles.rtlText]}>
+                {t("whatSelling")}
+              </ThemedText>
             </View>
-            <ThemedText style={styles.arenaSubtitle}>
-              Live Sales Shadow - TRAIN WITH JOE
+            <ThemedText style={[styles.arenaSubtitle, isRTL && styles.rtlText]}>
+              {t("liveSalesShadow")}
             </ThemedText>
           </Pressable>
         </Animated.View>
@@ -165,13 +190,19 @@ export default function ArenaScreen() {
           style={styles.cardHalf}
         >
           <View style={[styles.mapCard, { backgroundColor: Colors.light.primary }]}>
-            <ThemedText style={styles.cardTitle}>THE 250 MAP</ThemedText>
+            <ThemedText style={[styles.cardTitle, isRTL && styles.rtlText]}>
+              {t("the250Map")}
+            </ThemedText>
             <View style={styles.networkIcon}>
               <Feather name="share-2" size={48} color={Colors.light.accent} />
             </View>
-            <ThemedText style={styles.networkLabel}>Your Network Growth</ThemedText>
+            <ThemedText style={[styles.networkLabel, isRTL && styles.rtlText]}>
+              {t("yourNetworkGrowth")}
+            </ThemedText>
             <ThemedText style={styles.networkNumber}>{stats.connections}</ThemedText>
-            <ThemedText style={styles.networkUnit}>CONNECTIONS</ThemedText>
+            <ThemedText style={[styles.networkUnit, isRTL && styles.rtlText]}>
+              {t("connections")}
+            </ThemedText>
           </View>
         </Animated.View>
       </View>
@@ -181,25 +212,27 @@ export default function ArenaScreen() {
         entering={FadeInDown.delay(400).duration(500)}
         style={[styles.greetingCard, { backgroundColor: Colors.light.primary }]}
       >
-        <View style={styles.greetingIcon}>
-          <Feather name="gift" size={24} color={Colors.light.accent} />
-        </View>
-        <View style={styles.greetingContent}>
-          <ThemedText style={styles.greetingTitle}>DAILY GREETING</ThemedText>
-          <ThemedText style={styles.greetingText}>
-            AI Assistant: {stats.connections > 0
-              ? "Check your CRM for follow-up suggestions!"
-              : "Complete your first session to get personalized tips!"}
-          </ThemedText>
-          <Pressable
-            style={styles.craftButton}
-            onPress={() => {
-              Haptics.selectionAsync();
-              navigation.navigate("Main", { screen: "CRMTab" } as any);
-            }}
-          >
-            <ThemedText style={styles.craftButtonText}>Craft Message</ThemedText>
-          </Pressable>
+        <View style={[styles.greetingRow, { flexDirection }]}>
+          <View style={styles.greetingIcon}>
+            <Feather name="gift" size={24} color={Colors.light.accent} />
+          </View>
+          <View style={styles.greetingContent}>
+            <ThemedText style={[styles.greetingTitle, isRTL && styles.rtlText]}>
+              {t("dailyGreeting")}
+            </ThemedText>
+            <ThemedText style={[styles.greetingText, isRTL && styles.rtlText]}>
+              {t("aiAssistant")} {stats.connections > 0 ? t("checkCRM") : t("completeFirst")}
+            </ThemedText>
+            <Pressable
+              style={styles.craftButton}
+              onPress={() => {
+                Haptics.selectionAsync();
+                navigation.navigate("Main", { screen: "CRMTab" } as any);
+              }}
+            >
+              <ThemedText style={styles.craftButtonText}>{t("craftMessage")}</ThemedText>
+            </Pressable>
+          </View>
         </View>
       </Animated.View>
 
@@ -208,14 +241,14 @@ export default function ArenaScreen() {
         entering={FadeInUp.delay(500).duration(500)}
         style={styles.levelSection}
       >
-        <View style={styles.levelHeader}>
+        <View style={[styles.levelHeader, { flexDirection }]}>
           <ThemedText style={[styles.levelTitle, { color: theme.text }]}>
-            Level: {stats.level}
+            {t("level")}: {getLevelName()}
           </ThemedText>
-          <View style={styles.trustPoints}>
+          <View style={[styles.trustPoints, { flexDirection }]}>
             <Feather name="heart" size={16} color={Colors.light.accent} />
             <ThemedText style={[styles.trustPointsText, { color: Colors.light.accent }]}>
-              {stats.trustPoints} Trust Points
+              {stats.trustPoints} {t("trustPoints")}
             </ThemedText>
           </View>
         </View>
@@ -239,18 +272,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  rtlText: {
+    textAlign: "right",
+    writingDirection: "rtl",
+  },
   welcomeCard: {
     borderRadius: BorderRadius.lg,
     padding: Spacing.xl,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: Spacing.lg,
     overflow: "hidden",
   },
   welcomeContent: {
-    flex: 1,
-    paddingRight: Spacing.md,
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   welcomeGreeting: {
     color: "#FFFFFF",
@@ -282,7 +316,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.accent,
   },
   cardsRow: {
-    flexDirection: "row",
     gap: Spacing.md,
     marginBottom: Spacing.lg,
   },
@@ -365,9 +398,10 @@ const styles = StyleSheet.create({
   greetingCard: {
     borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
-    flexDirection: "row",
-    alignItems: "flex-start",
     marginBottom: Spacing.lg,
+  },
+  greetingRow: {
+    alignItems: "flex-start",
   },
   greetingIcon: {
     width: 40,
@@ -376,7 +410,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(212, 175, 55, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: Spacing.md,
+    marginHorizontal: Spacing.md,
   },
   greetingContent: {
     flex: 1,
@@ -410,7 +444,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   levelHeader: {
-    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: Spacing.sm,
@@ -420,7 +453,6 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat_600SemiBold",
   },
   trustPoints: {
-    flexDirection: "row",
     alignItems: "center",
     gap: Spacing.xs,
   },

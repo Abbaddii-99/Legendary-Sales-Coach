@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -9,13 +9,16 @@ import {
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { reloadAppAsync } from "expo";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 
 interface UserStats {
@@ -29,11 +32,12 @@ const DEFAULT_STATS: UserStats = {
   totalSessions: 0,
   trustPoints: 0,
   connections: 0,
-  level: "Newcomer",
+  level: "newcomer",
 };
 
 export default function ProfileScreen() {
   const { theme } = useTheme();
+  const { t, isRTL, language, toggleLanguage } = useLanguage();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
@@ -42,9 +46,11 @@ export default function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState("");
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const loadData = async () => {
     try {
@@ -71,14 +77,23 @@ export default function ProfileScreen() {
     setIsEditing(false);
   };
 
+  const handleLanguageToggle = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await toggleLanguage();
+    // Reload app to apply RTL changes
+    setTimeout(() => {
+      reloadAppAsync();
+    }, 500);
+  };
+
   const handleResetProgress = () => {
     Alert.alert(
-      "Reset Progress",
-      "Are you sure you want to reset all your progress? This cannot be undone.",
+      t("resetProgress"),
+      t("resetProgressConfirm"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("cancel"), style: "cancel" },
         {
-          text: "Reset",
+          text: t("reset"),
           style: "destructive",
           onPress: async () => {
             await AsyncStorage.removeItem("userStats");
@@ -91,6 +106,15 @@ export default function ProfileScreen() {
       ]
     );
   };
+
+  const getLevelName = () => {
+    if (stats.trustPoints >= 500) return t("masterCloser");
+    if (stats.trustPoints >= 200) return t("certifiedDealer");
+    if (stats.trustPoints >= 50) return t("apprentice");
+    return t("newcomer");
+  };
+
+  const flexDirection = isRTL ? "row-reverse" : "row";
 
   const renderStatItem = (
     icon: keyof typeof Feather.glyphMap,
@@ -105,7 +129,7 @@ export default function ProfileScreen() {
         <ThemedText style={[styles.statValue, { color: theme.text }]}>
           {value}
         </ThemedText>
-        <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>
+        <ThemedText style={[styles.statLabel, { color: theme.textSecondary }, isRTL && styles.rtlText]}>
           {label}
         </ThemedText>
       </View>
@@ -122,7 +146,7 @@ export default function ProfileScreen() {
       onPress={onPress}
       style={({ pressed }) => [
         styles.settingItem,
-        { backgroundColor: theme.backgroundDefault },
+        { backgroundColor: theme.backgroundDefault, flexDirection },
         pressed && styles.settingPressed,
       ]}
     >
@@ -142,11 +166,16 @@ export default function ProfileScreen() {
         style={[
           styles.settingLabel,
           { color: danger ? Colors.light.error : theme.text },
+          isRTL && styles.rtlText,
         ]}
       >
         {label}
       </ThemedText>
-      <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+      <Feather
+        name={isRTL ? "chevron-left" : "chevron-right"}
+        size={20}
+        color={theme.textSecondary}
+      />
     </Pressable>
   );
 
@@ -168,19 +197,20 @@ export default function ProfileScreen() {
           </ThemedText>
         </View>
         {isEditing ? (
-          <View style={styles.editNameContainer}>
+          <View style={[styles.editNameContainer, { flexDirection }]}>
             <TextInput
               style={[
                 styles.nameInput,
                 {
                   backgroundColor: theme.backgroundDefault,
                   color: theme.text,
+                  textAlign: isRTL ? "right" : "center",
                 },
               ]}
               value={tempName}
               onChangeText={setTempName}
               autoFocus
-              placeholder="Enter your name"
+              placeholder={t("enterClientName")}
               placeholderTextColor={theme.textSecondary}
             />
             <Pressable
@@ -191,7 +221,7 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
         ) : (
-          <Pressable onPress={handleEditName} style={styles.nameContainer}>
+          <Pressable onPress={handleEditName} style={[styles.nameContainer, { flexDirection }]}>
             <ThemedText style={[styles.userName, { color: theme.text }]}>
               {userName}
             </ThemedText>
@@ -199,43 +229,41 @@ export default function ProfileScreen() {
           </Pressable>
         )}
         <ThemedText style={[styles.levelBadge, { color: Colors.light.accent }]}>
-          {stats.level}
+          {getLevelName()}
         </ThemedText>
       </View>
 
       {/* Stats Grid */}
-      <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
-        Your Progress
+      <ThemedText style={[styles.sectionTitle, { color: theme.text }, isRTL && styles.rtlText]}>
+        {t("yourProgress")}
       </ThemedText>
-      <View style={styles.statsGrid}>
-        {renderStatItem("activity", "Sessions", stats.totalSessions)}
-        {renderStatItem("heart", "Trust Points", stats.trustPoints)}
-        {renderStatItem("users", "Connections", stats.connections)}
-        {renderStatItem("award", "Level", stats.level)}
+      <View style={[styles.statsGrid, { flexDirection }]}>
+        {renderStatItem("activity", t("sessions"), stats.totalSessions)}
+        {renderStatItem("heart", t("trustPoints"), stats.trustPoints)}
+        {renderStatItem("users", t("connections"), stats.connections)}
+        {renderStatItem("award", t("level"), getLevelName())}
       </View>
 
       {/* Settings */}
-      <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
-        Settings
+      <ThemedText style={[styles.sectionTitle, { color: theme.text }, isRTL && styles.rtlText]}>
+        {t("settings")}
       </ThemedText>
       <View style={styles.settingsContainer}>
-        {renderSettingItem("info", "About Girard's Legacy", () => {
-          Alert.alert(
-            "About",
-            "Girard's Legacy is inspired by Joe Girard, the world's greatest salesman. Train with AI-powered roleplay to become a sales legend!"
-          );
+        {renderSettingItem("globe", language === "ar" ? t("switchToEnglish") : t("switchToArabic"), handleLanguageToggle)}
+        {renderSettingItem("info", t("aboutApp"), () => {
+          Alert.alert(t("about"), t("aboutDescription"));
         })}
-        {renderSettingItem("trash-2", "Reset Progress", handleResetProgress, true)}
+        {renderSettingItem("trash-2", t("resetProgress"), handleResetProgress, true)}
       </View>
 
       {/* Quote */}
       <View style={[styles.quoteCard, { backgroundColor: Colors.light.feedbackBg }]}>
         <Feather name="star" size={20} color={Colors.light.accent} />
-        <ThemedText style={[styles.quoteText, { color: Colors.light.primary }]}>
-          "The elevator to success is out of order. You'll have to use the stairs, one step at a time."
+        <ThemedText style={[styles.quoteText, { color: Colors.light.primary }, isRTL && styles.rtlText]}>
+          "{t("elevatorQuote")}"
         </ThemedText>
         <ThemedText style={[styles.quoteAuthor, { color: Colors.light.primary }]}>
-          - Joe Girard
+          - {isRTL ? "جو جيرارد" : "Joe Girard"}
         </ThemedText>
       </View>
     </KeyboardAwareScrollViewCompat>
@@ -245,6 +273,10 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  rtlText: {
+    textAlign: "right",
+    writingDirection: "rtl",
   },
   profileHeader: {
     alignItems: "center",
@@ -264,7 +296,6 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat_700Bold",
   },
   nameContainer: {
-    flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
     marginBottom: Spacing.xs,
@@ -274,7 +305,6 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat_700Bold",
   },
   editNameContainer: {
-    flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
     marginBottom: Spacing.xs,
@@ -286,7 +316,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.sm,
     minWidth: 150,
-    textAlign: "center",
   },
   saveButton: {
     width: 40,
@@ -306,7 +335,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
   },
   statsGrid: {
-    flexDirection: "row",
     flexWrap: "wrap",
     gap: Spacing.md,
   },
@@ -336,7 +364,6 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   settingItem: {
-    flexDirection: "row",
     alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
@@ -350,7 +377,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: Spacing.md,
+    marginHorizontal: Spacing.md,
   },
   settingLabel: {
     flex: 1,

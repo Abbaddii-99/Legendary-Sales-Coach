@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CRMScreen from "@/screens/CRMScreen";
 import ClientDetailScreen from "@/screens/ClientDetailScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export type CRMStackParamList = {
   CRM: undefined;
@@ -13,6 +14,7 @@ const Stack = createNativeStackNavigator<CRMStackParamList>();
 
 export default function CRMStackNavigator() {
   const screenOptions = useScreenOptions();
+  const { t } = useLanguage();
 
   return (
     <Stack.Navigator screenOptions={screenOptions}>
@@ -20,14 +22,14 @@ export default function CRMStackNavigator() {
         name="CRM"
         component={CRMScreen}
         options={{
-          headerTitle: "My Clients",
+          headerTitle: t("myClients"),
         }}
       />
       <Stack.Screen
         name="ClientDetail"
         component={ClientDetailScreen}
         options={{
-          headerTitle: "Client Details",
+          headerTitle: t("clientDetails"),
         }}
       />
     </Stack.Navigator>

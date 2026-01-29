@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -18,10 +18,10 @@ import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { CRMStackParamList } from "@/navigation/CRMStackNavigator";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import { HeaderButton } from "@react-navigation/elements";
 
 type CRMNavigationProp = NativeStackNavigationProp<CRMStackParamList>;
 type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -37,6 +37,7 @@ export interface Client {
 
 export default function CRMScreen() {
   const { theme } = useTheme();
+  const { t, isRTL, language } = useLanguage();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
@@ -83,11 +84,13 @@ export default function CRMScreen() {
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
     
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString();
+    if (diffDays === 0) return t("today");
+    if (diffDays === 1) return t("yesterday");
+    if (diffDays < 7) return `${diffDays} ${t("daysAgo")}`;
+    return date.toLocaleDateString(isRTL ? "ar" : "en");
   };
+
+  const flexDirection = isRTL ? "row-reverse" : "row";
 
   const renderClient = ({ item }: { item: Client }) => (
     <Pressable
@@ -98,7 +101,7 @@ export default function CRMScreen() {
         pressed && styles.cardPressed,
       ]}
     >
-      <View style={styles.clientHeader}>
+      <View style={[styles.clientHeader, { flexDirection }]}>
         <View
           style={[styles.avatar, { backgroundColor: Colors.light.primary }]}
         >
@@ -106,26 +109,30 @@ export default function CRMScreen() {
             {item.name.charAt(0).toUpperCase()}
           </ThemedText>
         </View>
-        <View style={styles.clientInfo}>
-          <ThemedText style={[styles.clientName, { color: theme.text }]}>
+        <View style={[styles.clientInfo, isRTL && styles.clientInfoRTL]}>
+          <ThemedText style={[styles.clientName, { color: theme.text }, isRTL && styles.rtlText]}>
             {item.name}
           </ThemedText>
-          <ThemedText style={[styles.lastContact, { color: theme.textSecondary }]}>
-            Last contact: {formatDate(item.lastContact)}
+          <ThemedText style={[styles.lastContact, { color: theme.textSecondary }, isRTL && styles.rtlText]}>
+            {t("lastContact")} {formatDate(item.lastContact)}
           </ThemedText>
         </View>
-        <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+        <Feather
+          name={isRTL ? "chevron-left" : "chevron-right"}
+          size={20}
+          color={theme.textSecondary}
+        />
       </View>
 
       <ThemedText
-        style={[styles.noteSnippet, { color: theme.textSecondary }]}
+        style={[styles.noteSnippet, { color: theme.textSecondary }, isRTL && styles.rtlText]}
         numberOfLines={2}
       >
         {item.personalNote}
       </ThemedText>
 
       {item.followUpIdea ? (
-        <View style={[styles.followUpBadge, { backgroundColor: Colors.light.feedbackBg }]}>
+        <View style={[styles.followUpBadge, { backgroundColor: Colors.light.feedbackBg, flexDirection }]}>
           <Feather name="bell" size={12} color={Colors.light.accent} />
           <ThemedText style={[styles.followUpText, { color: Colors.light.primary }]}>
             {item.followUpIdea}
@@ -142,18 +149,18 @@ export default function CRMScreen() {
         style={styles.emptyImage}
         resizeMode="contain"
       />
-      <ThemedText style={[styles.emptyTitle, { color: theme.text }]}>
-        No clients tracked yet
+      <ThemedText style={[styles.emptyTitle, { color: theme.text }, isRTL && styles.rtlText]}>
+        {t("noClientsYet")}
       </ThemedText>
-      <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
-        Complete a training session to start building your network of connections.
+      <ThemedText style={[styles.emptyText, { color: theme.textSecondary }, isRTL && styles.rtlText]}>
+        {t("completeSession")}
       </ThemedText>
       <Pressable
-        style={[styles.addButton, { backgroundColor: Colors.light.accent }]}
+        style={[styles.addButton, { backgroundColor: Colors.light.accent, flexDirection }]}
         onPress={handleAddClient}
       >
         <Feather name="plus" size={20} color={Colors.light.primary} />
-        <ThemedText style={styles.addButtonText}>Add Your First Client</ThemedText>
+        <ThemedText style={styles.addButtonText}>{t("addFirstClient")}</ThemedText>
       </Pressable>
     </View>
   );
@@ -184,7 +191,11 @@ export default function CRMScreen() {
 
       {clients.length > 0 ? (
         <Pressable
-          style={[styles.fab, { backgroundColor: Colors.light.accent }]}
+          style={[
+            styles.fab,
+            { backgroundColor: Colors.light.accent },
+            isRTL ? { left: Spacing.lg, right: undefined } : { right: Spacing.lg },
+          ]}
           onPress={handleAddClient}
         >
           <Feather name="plus" size={24} color={Colors.light.primary} />
@@ -197,6 +208,10 @@ export default function CRMScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  rtlText: {
+    textAlign: "right",
+    writingDirection: "rtl",
   },
   list: {
     flex: 1,
@@ -214,7 +229,6 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   clientHeader: {
-    flexDirection: "row",
     alignItems: "center",
     marginBottom: Spacing.sm,
   },
@@ -224,7 +238,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: Spacing.md,
+    marginHorizontal: Spacing.md,
   },
   avatarText: {
     color: "#FFFFFF",
@@ -233,6 +247,9 @@ const styles = StyleSheet.create({
   },
   clientInfo: {
     flex: 1,
+  },
+  clientInfoRTL: {
+    alignItems: "flex-end",
   },
   clientName: {
     fontSize: 16,
@@ -248,7 +265,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   followUpBadge: {
-    flexDirection: "row",
     alignItems: "center",
     gap: Spacing.xs,
     paddingVertical: Spacing.xs,
@@ -284,7 +300,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   addButton: {
-    flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
     paddingVertical: Spacing.md,
@@ -299,7 +314,6 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     bottom: 100,
-    right: Spacing.lg,
     width: 56,
     height: 56,
     borderRadius: 28,

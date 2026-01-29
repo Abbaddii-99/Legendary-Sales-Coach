@@ -8,6 +8,7 @@ import TrainingStackNavigator from "@/navigation/TrainingStackNavigator";
 import CRMStackNavigator from "@/navigation/CRMStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Colors } from "@/constants/theme";
 
 export type MainTabParamList = {
@@ -21,6 +22,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export default function MainTabNavigator() {
   const { theme, isDark } = useTheme();
+  const { t } = useLanguage();
 
   return (
     <Tab.Navigator
@@ -52,7 +54,7 @@ export default function MainTabNavigator() {
         name="ArenaTab"
         component={ArenaStackNavigator}
         options={{
-          title: "Arena",
+          title: t("arena"),
           tabBarIcon: ({ color, size }) => (
             <Feather name="mic" size={size} color={color} />
           ),
@@ -62,7 +64,7 @@ export default function MainTabNavigator() {
         name="TrainingTab"
         component={TrainingStackNavigator}
         options={{
-          title: "Training",
+          title: t("training"),
           tabBarIcon: ({ color, size }) => (
             <Feather name="book-open" size={size} color={color} />
           ),
@@ -72,7 +74,7 @@ export default function MainTabNavigator() {
         name="CRMTab"
         component={CRMStackNavigator}
         options={{
-          title: "CRM",
+          title: t("crm"),
           tabBarIcon: ({ color, size }) => (
             <Feather name="users" size={size} color={color} />
           ),
@@ -82,7 +84,7 @@ export default function MainTabNavigator() {
         name="ProfileTab"
         component={ProfileStackNavigator}
         options={{
-          title: "Profile",
+          title: t("settings"),
           tabBarIcon: ({ color, size }) => (
             <Feather name="settings" size={size} color={color} />
           ),
