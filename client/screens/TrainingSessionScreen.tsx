@@ -22,6 +22,8 @@ import { useTheme } from "@/hooks/useTheme";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { useLanguage } from "@/hooks/useLanguage";
+import { generateSessionId, SessionMessage, SessionScores } from "@/lib/sessionStorage";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, "TrainingSession">;
@@ -45,6 +47,7 @@ const CUSTOMER_PERSONAS: Record<string, { name: string; personality: string }> =
 
 export default function TrainingSessionScreen() {
   const { theme } = useTheme();
+  const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteType>();
@@ -56,6 +59,7 @@ export default function TrainingSessionScreen() {
   const [sessionTime, setSessionTime] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const sessionIdRef = useRef(generateSessionId());
 
   const persona = CUSTOMER_PERSONAS[customerType] || CUSTOMER_PERSONAS.random;
 
@@ -178,26 +182,41 @@ export default function TrainingSessionScreen() {
 
   const handleEndSession = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    
-    // Calculate score based on session
-    const score = Math.min(100, Math.floor(50 + messages.filter((m) => m.role === "user").length * 10));
-    
-    // Save session
-    const session = {
-      id: Date.now().toString(),
-      scenarioId,
-      scenarioTitle,
-      score,
-      duration: sessionTime,
-      messages: messages.length,
-      timestamp: new Date().toISOString(),
-    };
+    setIsLoading(true);
+
+    // Convert messages to SessionMessage format
+    const sessionMessages: SessionMessage[] = messages
+      .filter((m) => m.role !== "joe")
+      .map((m) => ({
+        role: m.role === "user" ? "user" : "assistant",
+        content: m.content,
+        timestamp: m.timestamp.toISOString(),
+      }));
 
     try {
-      const existing = await AsyncStorage.getItem("sessions");
-      const sessions = existing ? JSON.parse(existing) : [];
-      sessions.unshift(session);
-      await AsyncStorage.setItem("sessions", JSON.stringify(sessions.slice(0, 50)));
+      // Get AI-generated scores and feedback
+      const response = await fetch(new URL("/api/training/evaluate", getApiUrl()).href, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scenarioId,
+          customerType,
+          messages: sessionMessages,
+          duration: sessionTime,
+        }),
+      });
+      const evaluation = await response.json();
+
+      const scores: SessionScores = {
+        buildingRapport: evaluation.scores?.buildingRapport || 70,
+        buildingTrust: evaluation.scores?.buildingTrust || 65,
+        activeListening: evaluation.scores?.activeListening || 70,
+        handlingObjections: evaluation.scores?.handlingObjections || 60,
+        focusOnService: evaluation.scores?.focusOnService || 75,
+        overall: evaluation.scores?.overall || 68,
+      };
+
+      const trustPointsEarned = Math.floor(scores.overall / 10);
 
       // Update stats
       const statsData = await AsyncStorage.getItem("userStats");
@@ -208,22 +227,57 @@ export default function TrainingSessionScreen() {
         level: "Newcomer",
       };
       stats.totalSessions += 1;
-      stats.trustPoints += Math.floor(score / 10);
+      stats.trustPoints += trustPointsEarned;
       
       if (stats.trustPoints >= 500) stats.level = "Master Closer";
       else if (stats.trustPoints >= 200) stats.level = "Certified Dealer";
       else if (stats.trustPoints >= 50) stats.level = "Apprentice";
       
       await AsyncStorage.setItem("userStats", JSON.stringify(stats));
-    } catch (error) {
-      console.error("Error saving session:", error);
-    }
 
-    navigation.replace("SessionSummary", {
-      sessionId: session.id,
-      score,
-      feedback: "Great job building rapport with the customer! Keep focusing on active listening.",
-    });
+      navigation.replace("SessionSummary", {
+        sessionId: sessionIdRef.current,
+        scenarioId,
+        scenarioTitle,
+        customerType,
+        score: scores.overall,
+        feedback: evaluation.feedback || "Great job! Keep practicing to improve your skills.",
+        scores,
+        messages: sessionMessages,
+        keyStrengths: evaluation.keyStrengths || [],
+        areasToImprove: evaluation.areasToImprove || [],
+        duration: sessionTime,
+        trustPointsEarned,
+      });
+    } catch (error) {
+      console.error("Error evaluating session:", error);
+      // Fallback with basic scores
+      const scores: SessionScores = {
+        buildingRapport: 70,
+        buildingTrust: 65,
+        activeListening: 70,
+        handlingObjections: 60,
+        focusOnService: 75,
+        overall: 68,
+      };
+
+      navigation.replace("SessionSummary", {
+        sessionId: sessionIdRef.current,
+        scenarioId,
+        scenarioTitle,
+        customerType,
+        score: scores.overall,
+        feedback: isRTL 
+          ? "عمل رائع في بناء العلاقة مع العميل! استمر في التركيز على الاستماع الفعال."
+          : "Great job building rapport with the customer! Keep focusing on active listening.",
+        scores,
+        messages: sessionMessages,
+        keyStrengths: [],
+        areasToImprove: [],
+        duration: sessionTime,
+        trustPointsEarned: 7,
+      });
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -323,7 +377,7 @@ export default function TrainingSessionScreen() {
             isLoading ? (
               <View style={styles.typingIndicator}>
                 <ThemedText style={{ color: theme.textSecondary }}>
-                  Customer is typing...
+                  {t("customerTyping")}
                 </ThemedText>
               </View>
             ) : null
@@ -350,8 +404,9 @@ export default function TrainingSessionScreen() {
             ]}
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Your response..."
+            placeholder={t("yourResponse")}
             placeholderTextColor={theme.textSecondary}
+            textAlign={isRTL ? "right" : "left"}
             multiline
             maxLength={500}
           />
@@ -385,7 +440,7 @@ export default function TrainingSessionScreen() {
             ]}
           >
             <Feather name="check-circle" size={16} color="#FFFFFF" />
-            <ThemedText style={styles.endSessionText}>End Session</ThemedText>
+            <ThemedText style={styles.endSessionText}>{t("endSession")}</ThemedText>
           </Pressable>
         ) : null}
       </KeyboardAvoidingView>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -17,14 +17,16 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { saveSession, TrainingSession } from "@/lib/sessionStorage";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, "SessionSummary">;
 
 interface ScoreCategory {
-  name: string;
+  nameKey: string;
   score: number;
   maxScore: number;
   icon: keyof typeof Feather.glyphMap;
@@ -32,21 +34,63 @@ interface ScoreCategory {
 
 export default function SessionSummaryScreen() {
   const { theme } = useTheme();
+  const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteType>();
-  const { score, feedback } = route.params;
+  const {
+    sessionId,
+    scenarioId,
+    scenarioTitle,
+    customerType,
+    score,
+    feedback,
+    scores,
+    messages,
+    keyStrengths,
+    areasToImprove,
+    duration,
+    trustPointsEarned,
+  } = route.params;
 
   const [clientName, setClientName] = useState("");
   const [personalNote, setPersonalNote] = useState("");
   const [showCRMForm, setShowCRMForm] = useState(false);
+  const [sessionSaved, setSessionSaved] = useState(false);
+
+  useEffect(() => {
+    // Save session on mount
+    if (!sessionSaved) {
+      saveSessionData();
+    }
+  }, []);
+
+  const saveSessionData = async () => {
+    const session: TrainingSession = {
+      id: sessionId,
+      scenarioId,
+      scenarioTitle,
+      customerType,
+      messages,
+      scores,
+      feedback,
+      keyStrengths,
+      areasToImprove,
+      trustPointsEarned,
+      duration,
+      createdAt: new Date().toISOString(),
+    };
+
+    await saveSession(session);
+    setSessionSaved(true);
+  };
 
   const categories: ScoreCategory[] = [
-    { name: "Building Rapport", score: Math.floor(score * 0.2), maxScore: 20, icon: "heart" },
-    { name: "Trust & Credibility", score: Math.floor(score * 0.22), maxScore: 22, icon: "shield" },
-    { name: "Active Listening", score: Math.floor(score * 0.18), maxScore: 18, icon: "headphones" },
-    { name: "Objection Handling", score: Math.floor(score * 0.2), maxScore: 20, icon: "zap" },
-    { name: "Service Focus", score: Math.floor(score * 0.2), maxScore: 20, icon: "star" },
+    { nameKey: "buildingRapport", score: scores.buildingRapport, maxScore: 100, icon: "heart" },
+    { nameKey: "trustCredibility", score: scores.buildingTrust, maxScore: 100, icon: "shield" },
+    { nameKey: "activeListening", score: scores.activeListening, maxScore: 100, icon: "headphones" },
+    { nameKey: "objectionHandling", score: scores.handlingObjections, maxScore: 100, icon: "zap" },
+    { nameKey: "serviceFocus", score: scores.focusOnService, maxScore: 100, icon: "star" },
   ];
 
   const handleDismiss = () => {
@@ -62,7 +106,7 @@ export default function SessionSummaryScreen() {
     const client = {
       id: Date.now().toString(),
       name: clientName.trim(),
-      personalNote: personalNote.trim() || "Met during training session",
+      personalNote: personalNote.trim() || (isRTL ? "التقيت أثناء جلسة التدريب" : "Met during training session"),
       lastContact: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     };
@@ -96,19 +140,21 @@ export default function SessionSummaryScreen() {
     return Colors.light.warning;
   };
 
+  const flexDirection = isRTL ? "row-reverse" : "row";
+
   const renderScoreBar = (category: ScoreCategory) => {
     const percentage = (category.score / category.maxScore) * 100;
     return (
-      <View key={category.name} style={styles.scoreItem}>
-        <View style={styles.scoreHeader}>
-          <View style={styles.scoreLabelContainer}>
+      <View key={category.nameKey} style={styles.scoreItem}>
+        <View style={[styles.scoreHeader, { flexDirection }]}>
+          <View style={[styles.scoreLabelContainer, { flexDirection }]}>
             <Feather name={category.icon} size={14} color={theme.textSecondary} />
             <ThemedText style={[styles.scoreLabel, { color: theme.text }]}>
-              {category.name}
+              {t(category.nameKey as any)}
             </ThemedText>
           </View>
           <ThemedText style={[styles.scoreValue, { color: theme.textSecondary }]}>
-            {category.score}/{category.maxScore}
+            {category.score}%
           </ThemedText>
         </View>
         <View style={[styles.scoreBarBg, { backgroundColor: theme.backgroundSecondary }]}>
@@ -155,14 +201,20 @@ export default function SessionSummaryScreen() {
         style={styles.scoreOverview}
       >
         <ThemedText style={[styles.totalScoreLabel, { color: theme.textSecondary }]}>
-          Your Score
+          {t("yourScore")}
         </ThemedText>
         <ThemedText style={[styles.totalScore, { color: getScoreColor(score) }]}>
           {score}
         </ThemedText>
         <ThemedText style={[styles.outOf, { color: theme.textSecondary }]}>
-          out of 100
+          {t("outOf")}
         </ThemedText>
+        <View style={[styles.trustPointsBadge, { flexDirection }]}>
+          <Feather name="star" size={16} color={Colors.light.accent} />
+          <ThemedText style={[styles.trustPointsText, { color: Colors.light.accent }]}>
+            +{trustPointsEarned} {t("trustPoints")}
+          </ThemedText>
+        </View>
       </Animated.View>
 
       {/* Score Breakdown */}
@@ -170,8 +222,8 @@ export default function SessionSummaryScreen() {
         entering={FadeInUp.delay(300).duration(500)}
         style={[styles.card, { backgroundColor: theme.backgroundDefault }]}
       >
-        <ThemedText style={[styles.cardTitle, { color: theme.text }]}>
-          Performance Breakdown
+        <ThemedText style={[styles.cardTitle, { color: theme.text }, isRTL && styles.rtlText]}>
+          {t("performanceBreakdown")}
         </ThemedText>
         {categories.map(renderScoreBar)}
       </Animated.View>
@@ -181,21 +233,77 @@ export default function SessionSummaryScreen() {
         entering={FadeInUp.delay(400).duration(500)}
         style={[styles.feedbackCard, { backgroundColor: Colors.light.feedbackBg }]}
       >
-        <View style={styles.feedbackHeader}>
+        <View style={[styles.feedbackHeader, { flexDirection }]}>
           <Image
             source={require("../../assets/images/joe-avatar.png")}
             style={styles.joeAvatar}
             resizeMode="cover"
           />
-          <View>
-            <ThemedText style={styles.feedbackTitle}>Joe's Assessment</ThemedText>
-            <ThemedText style={styles.feedbackSubtitle}>Your coach says...</ThemedText>
+          <View style={isRTL ? styles.feedbackTextContainerRTL : undefined}>
+            <ThemedText style={styles.feedbackTitle}>{t("joesAssessment")}</ThemedText>
+            <ThemedText style={styles.feedbackSubtitle}>{t("yourCoachSays")}</ThemedText>
           </View>
         </View>
-        <ThemedText style={[styles.feedbackText, { color: Colors.light.primary }]}>
+        <ThemedText style={[styles.feedbackText, { color: Colors.light.primary }, isRTL && styles.rtlText]}>
           "{feedback}"
         </ThemedText>
       </Animated.View>
+
+      {/* Strengths & Improvements */}
+      {(keyStrengths.length > 0 || areasToImprove.length > 0) ? (
+        <Animated.View
+          entering={FadeInUp.delay(450).duration(500)}
+          style={[styles.insightsRow, { flexDirection }]}
+        >
+          {keyStrengths.length > 0 ? (
+            <View
+              style={[
+                styles.insightCard,
+                { backgroundColor: `${Colors.light.success}15` },
+              ]}
+            >
+              <Feather name="thumbs-up" size={20} color={Colors.light.success} />
+              <ThemedText
+                style={[styles.insightTitle, { color: Colors.light.success }]}
+              >
+                {t("tipStrength")}
+              </ThemedText>
+              {keyStrengths.slice(0, 2).map((s, i) => (
+                <ThemedText
+                  key={i}
+                  style={[styles.insightItem, { color: theme.text }, isRTL && styles.rtlText]}
+                >
+                  • {s}
+                </ThemedText>
+              ))}
+            </View>
+          ) : null}
+
+          {areasToImprove.length > 0 ? (
+            <View
+              style={[
+                styles.insightCard,
+                { backgroundColor: `${Colors.light.warning}15` },
+              ]}
+            >
+              <Feather name="target" size={20} color={Colors.light.warning} />
+              <ThemedText
+                style={[styles.insightTitle, { color: Colors.light.warning }]}
+              >
+                {t("tipPractice")}
+              </ThemedText>
+              {areasToImprove.slice(0, 2).map((s, i) => (
+                <ThemedText
+                  key={i}
+                  style={[styles.insightItem, { color: theme.text }, isRTL && styles.rtlText]}
+                >
+                  • {s}
+                </ThemedText>
+              ))}
+            </View>
+          ) : null}
+        </Animated.View>
+      ) : null}
 
       {/* CRM Section */}
       {showCRMForm ? (
@@ -203,8 +311,8 @@ export default function SessionSummaryScreen() {
           entering={FadeInUp.duration(300)}
           style={[styles.card, { backgroundColor: theme.backgroundDefault }]}
         >
-          <ThemedText style={[styles.cardTitle, { color: theme.text }]}>
-            Save to CRM
+          <ThemedText style={[styles.cardTitle, { color: theme.text }, isRTL && styles.rtlText]}>
+            {t("saveToCRM")}
           </ThemedText>
           <TextInput
             style={[
@@ -212,11 +320,12 @@ export default function SessionSummaryScreen() {
               {
                 backgroundColor: theme.backgroundSecondary,
                 color: theme.text,
+                textAlign: isRTL ? "right" : "left",
               },
             ]}
             value={clientName}
             onChangeText={setClientName}
-            placeholder="Client Name"
+            placeholder={t("clientName")}
             placeholderTextColor={theme.textSecondary}
           />
           <TextInput
@@ -226,22 +335,23 @@ export default function SessionSummaryScreen() {
               {
                 backgroundColor: theme.backgroundSecondary,
                 color: theme.text,
+                textAlign: isRTL ? "right" : "left",
               },
             ]}
             value={personalNote}
             onChangeText={setPersonalNote}
-            placeholder="Personal note (e.g., likes black coffee, has 2 kids)"
+            placeholder={t("addDetails")}
             placeholderTextColor={theme.textSecondary}
             multiline
             numberOfLines={3}
           />
-          <View style={styles.buttonRow}>
+          <View style={[styles.buttonRow, { flexDirection }]}>
             <Pressable
               onPress={() => setShowCRMForm(false)}
               style={[styles.secondaryButton, { borderColor: theme.textSecondary }]}
             >
               <ThemedText style={[styles.secondaryButtonText, { color: theme.textSecondary }]}>
-                Cancel
+                {t("cancel")}
               </ThemedText>
             </Pressable>
             <Pressable
@@ -267,27 +377,27 @@ export default function SessionSummaryScreen() {
                   { color: clientName.trim() ? Colors.light.primary : theme.textSecondary },
                 ]}
               >
-                Save Client
+                {t("saveClient")}
               </ThemedText>
             </Pressable>
           </View>
         </Animated.View>
       ) : (
-        <View style={styles.buttonRow}>
+        <View style={[styles.buttonRow, { flexDirection }]}>
           <Pressable
             onPress={() => setShowCRMForm(true)}
             style={[styles.outlineButton, { borderColor: Colors.light.accent }]}
           >
             <Feather name="user-plus" size={18} color={Colors.light.accent} />
             <ThemedText style={[styles.outlineButtonText, { color: Colors.light.accent }]}>
-              Save to CRM
+              {t("saveToCRM")}
             </ThemedText>
           </Pressable>
           <Pressable
             onPress={handleDismiss}
             style={[styles.primaryButton, { backgroundColor: Colors.light.primary }]}
           >
-            <ThemedText style={styles.primaryButtonText}>Done</ThemedText>
+            <ThemedText style={styles.primaryButtonText}>{t("done")}</ThemedText>
           </Pressable>
         </View>
       )}
@@ -298,6 +408,10 @@ export default function SessionSummaryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  rtlText: {
+    textAlign: "right",
+    writingDirection: "rtl",
   },
   successContainer: {
     alignItems: "center",
@@ -322,6 +436,19 @@ const styles = StyleSheet.create({
   outOf: {
     fontSize: 14,
   },
+  trustPointsBadge: {
+    alignItems: "center",
+    gap: Spacing.xs,
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    backgroundColor: "rgba(212, 175, 55, 0.1)",
+    borderRadius: BorderRadius.full,
+  },
+  trustPointsText: {
+    fontSize: 14,
+    fontFamily: "Montserrat_600SemiBold",
+  },
   card: {
     borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
@@ -336,13 +463,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   scoreHeader: {
-    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: Spacing.xs,
   },
   scoreLabelContainer: {
-    flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
   },
@@ -365,15 +490,17 @@ const styles = StyleSheet.create({
   feedbackCard: {
     borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
     borderWidth: 1,
     borderColor: Colors.light.accent,
   },
   feedbackHeader: {
-    flexDirection: "row",
     alignItems: "center",
     gap: Spacing.md,
     marginBottom: Spacing.md,
+  },
+  feedbackTextContainerRTL: {
+    alignItems: "flex-end",
   },
   joeAvatar: {
     width: 48,
@@ -397,6 +524,24 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontStyle: "italic",
   },
+  insightsRow: {
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  insightCard: {
+    flex: 1,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.xs,
+  },
+  insightTitle: {
+    fontSize: 13,
+    fontFamily: "Montserrat_600SemiBold",
+  },
+  insightItem: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
   input: {
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
@@ -409,7 +554,6 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   buttonRow: {
-    flexDirection: "row",
     gap: Spacing.md,
   },
   primaryButton: {

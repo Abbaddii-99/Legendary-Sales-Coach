@@ -236,9 +236,46 @@ export default function ArenaScreen() {
         </View>
       </Animated.View>
 
-      {/* Level Progress */}
+      {/* Session History Button */}
       <Animated.View
         entering={FadeInUp.delay(500).duration(500)}
+        style={[styles.historyCard, { backgroundColor: theme.backgroundDefault }]}
+      >
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync();
+            navigation.navigate("SessionHistory");
+          }}
+          style={({ pressed }) => [
+            styles.historyButton,
+            { flexDirection },
+            pressed && styles.cardPressed,
+          ]}
+        >
+          <View style={[styles.historyIcon, { backgroundColor: `${Colors.light.accent}20` }]}>
+            <Feather name="bar-chart-2" size={24} color={Colors.light.accent} />
+          </View>
+          <View style={[styles.historyContent, isRTL && styles.historyContentRTL]}>
+            <ThemedText style={[styles.historyTitle, { color: theme.text }, isRTL && styles.rtlText]}>
+              {t("sessionHistory")}
+            </ThemedText>
+            <ThemedText style={[styles.historySubtitle, { color: theme.textSecondary }, isRTL && styles.rtlText]}>
+              {stats.totalSessions > 0
+                ? `${stats.totalSessions} ${t("sessions")}`
+                : t("startTraining")}
+            </ThemedText>
+          </View>
+          <Feather
+            name={isRTL ? "chevron-left" : "chevron-right"}
+            size={20}
+            color={theme.textSecondary}
+          />
+        </Pressable>
+      </Animated.View>
+
+      {/* Level Progress */}
+      <Animated.View
+        entering={FadeInUp.delay(600).duration(500)}
         style={styles.levelSection}
       >
         <View style={[styles.levelHeader, { flexDirection }]}>
@@ -439,6 +476,37 @@ const styles = StyleSheet.create({
     color: Colors.light.primary,
     fontSize: 14,
     fontFamily: "Montserrat_600SemiBold",
+  },
+  historyCard: {
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg,
+    overflow: "hidden",
+  },
+  historyButton: {
+    padding: Spacing.lg,
+    alignItems: "center",
+  },
+  historyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginHorizontal: Spacing.md,
+  },
+  historyContent: {
+    flex: 1,
+  },
+  historyContentRTL: {
+    alignItems: "flex-end",
+  },
+  historyTitle: {
+    fontSize: 16,
+    fontFamily: "Montserrat_600SemiBold",
+    marginBottom: 2,
+  },
+  historySubtitle: {
+    fontSize: 13,
   },
   levelSection: {
     marginTop: Spacing.sm,

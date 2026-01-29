@@ -168,6 +168,143 @@ Keep the total response under 100 words. Be warm but honest.`,
     }
   });
 
+  // Session evaluation endpoint
+  app.post("/api/training/evaluate", async (req: Request, res: Response) => {
+    try {
+      const { scenarioId, customerType, messages, duration } = req.body;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-5.2",
+        messages: [
+          {
+            role: "system",
+            content: `You are Joe Girard, the world's greatest salesman, evaluating a sales training session.
+
+Based on the conversation, provide a detailed evaluation in JSON format:
+{
+  "scores": {
+    "buildingRapport": <0-100>,
+    "buildingTrust": <0-100>,
+    "activeListening": <0-100>,
+    "handlingObjections": <0-100>,
+    "focusOnService": <0-100>,
+    "overall": <0-100>
+  },
+  "feedback": "<2-3 sentence personalized coaching feedback in Joe Girard's warm, encouraging style>",
+  "keyStrengths": ["<strength 1>", "<strength 2>"],
+  "areasToImprove": ["<area 1>", "<area 2>"]
+}
+
+Be encouraging but honest. The overall score should be a weighted average of all categories.
+If the conversation was brief, adjust expectations accordingly.
+Respond ONLY with valid JSON.`,
+          },
+          {
+            role: "user",
+            content: `Evaluate this ${Math.floor(duration / 60)} minute training session:\n\nScenario: ${scenarioId}\nCustomer Type: ${customerType}\n\nConversation:\n${messages.map((m: any) => `${m.role === 'user' ? 'Salesperson' : 'Customer'}: ${m.content}`).join('\n')}`,
+          },
+        ],
+        max_completion_tokens: 500,
+      });
+
+      const content = response.choices[0]?.message?.content || "{}";
+      
+      // Parse JSON response
+      try {
+        const evaluation = JSON.parse(content);
+        res.json(evaluation);
+      } catch {
+        // Fallback if JSON parsing fails
+        res.json({
+          scores: {
+            buildingRapport: 70,
+            buildingTrust: 65,
+            activeListening: 70,
+            handlingObjections: 60,
+            focusOnService: 75,
+            overall: 68,
+          },
+          feedback: content.slice(0, 200) || "Great effort! Keep practicing and remember - every customer is a door to 250 more!",
+          keyStrengths: ["Building rapport", "Showing interest"],
+          areasToImprove: ["Active listening", "Handling objections"],
+        });
+      }
+    } catch (error) {
+      console.error("Error evaluating session:", error);
+      res.json({
+        scores: {
+          buildingRapport: 70,
+          buildingTrust: 65,
+          activeListening: 70,
+          handlingObjections: 60,
+          focusOnService: 75,
+          overall: 68,
+        },
+        feedback: "Great job building rapport! Keep practicing and remember Joe's golden rule - people buy YOU before they buy the product!",
+        keyStrengths: ["Building rapport"],
+        areasToImprove: ["Active listening"],
+      });
+    }
+  });
+
+  // AI Tips generator based on analytics
+  app.post("/api/training/tips", async (req: Request, res: Response) => {
+    try {
+      const { analytics, recentSessions } = req.body;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-5.2",
+        messages: [
+          {
+            role: "system",
+            content: `You are Joe Girard's AI coaching assistant. Based on the user's training analytics and recent sessions, generate 3 personalized tips to help them improve.
+
+Format your response as JSON:
+{
+  "tips": [
+    {"title": "<short title>", "description": "<1-2 sentence actionable tip>", "category": "<focus area>"},
+    {"title": "<short title>", "description": "<1-2 sentence actionable tip>", "category": "<focus area>"},
+    {"title": "<short title>", "description": "<1-2 sentence actionable tip>", "category": "<focus area>"}
+  ]
+}
+
+Categories: buildingRapport, buildingTrust, activeListening, handlingObjections, focusOnService, consistency
+
+Be specific and actionable. Reference Joe Girard's principles when relevant.
+Respond ONLY with valid JSON.`,
+          },
+          {
+            role: "user",
+            content: `Analytics:\n${JSON.stringify(analytics)}\n\nRecent Sessions:\n${JSON.stringify(recentSessions?.slice(0, 3))}`,
+          },
+        ],
+        max_completion_tokens: 400,
+      });
+
+      const content = response.choices[0]?.message?.content || "{}";
+      
+      try {
+        const tips = JSON.parse(content);
+        res.json(tips);
+      } catch {
+        res.json({
+          tips: [
+            { title: "Practice Makes Perfect", description: "Complete at least one training session daily to build muscle memory.", category: "consistency" },
+            { title: "Focus on Listening", description: "In your next session, try asking 3 questions before making any statements.", category: "activeListening" },
+            { title: "Remember the 250", description: "Every customer knows 250 people. Treat each session like a real opportunity!", category: "buildingTrust" },
+          ],
+        });
+      }
+    } catch (error) {
+      console.error("Error generating tips:", error);
+      res.json({
+        tips: [
+          { title: "Stay Consistent", description: "Train daily to see the best results!", category: "consistency" },
+        ],
+      });
+    }
+  });
+
   // Follow-up idea generator
   app.post("/api/crm/follow-up-idea", async (req: Request, res: Response) => {
     try {
